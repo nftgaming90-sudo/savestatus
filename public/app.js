@@ -140,7 +140,7 @@ function buatKartuKonten(data, modeRapi = false) {
                 <div class="p-3">
                     <h3 class="font-medium text-sm mb-2">${data.judul}</h3>
                     <div class="flex gap-2">
-                        <button class="btn-unduh flex-1 bg-utama text-white text-xs py-2 rounded-lg" data-url="${data.url_file}">Unduh</button>
+                        <button class="btn-unduh flex-1 bg-utama text-white text-xs-py-2 rounded-lg" data-url="${data.url_file}">Unduh</button>
                         <button class="btn-bagikan flex-1 bg-gray-200 dark:bg-gray-700 text-xs py-2 rounded-lg" data-url="${data.url_file}">Bagikan</button>
                     </div>
                 </div>
@@ -202,7 +202,7 @@ function aktifkanTombolKategori() {
 }
 
 // ==================================================
-// 🆕 9. FITUR UTAMA: DOWNLOAD DARI LINK IG / TIKTOK ✅ SISTEM BARU 100%
+// 🆕 9. FITUR UTAMA: DOWNLOAD DARI LINK IG / TIKTOK ✅ VERSI SERVER
 // ==================================================
 function aktifkanFiturDownloadLink() {
     if (!btnCek || !linkInput) return;
@@ -258,97 +258,69 @@ async function ambilDataDariTikTok(url) {
     }
 }
 
-// --- ✅ AMBIL DATA INSTAGRAM (SISTEM BARU PALING AMPUH) ---
+// --- ✅ AMBIL DATA INSTAGRAM (VERSI SERVER VERCEL - DIJAMIN JALAN) ---
 async function ambilDataDariIG(url) {
-    // Bersihkan link dari parameter sampah
-    url = url.split('?')[0];
+    url = url.split('?')[0]; // Bersihkan link
 
-    // ✅ SUMBER UTAMA: SNAPINSTA - PALING STABIL UNTUK REELS
+    // ✅ SUMBER UTAMA: IGBANG (Sangat stabil di server luar)
     try {
-        const res = await fetch(`https://snapinsta.app/api/ajaxSearch`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                'Accept': 'application/json',
-            },
-            body: `q=${encodeURIComponent(url)}&t=media&lang=id`
-        });
-
+        const res = await fetch(`https://igbang.com/api/v1/download?url=${encodeURIComponent(url)}`);
         const data = await res.json();
 
-        if (data.status === "ok" && data.data) {
-            // Cek apakah ini video atau gambar
-            if (data.data.includes('type="video/mp4"')) {
-                // Ambil link video dari teks HTML yang dikembalikan
-                const linkVideoMatch = data.data.match(/href="([^"]+)"[^>]*>Download Video<\/a>/);
-                if (linkVideoMatch && linkVideoMatch[1]) {
-                    return {
-                        judul: "📹 Instagram Reels / Video",
-                        tipe: "video",
-                        url_file: linkVideoMatch[1],
-                        url_thumbnail: ""
-                    };
-                }
-            } else {
-                // Ambil link gambar
-                const linkGambarMatch = data.data.match(/href="([^"]+)"[^>]*>Download<\/a>/);
-                if (linkGambarMatch && linkGambarMatch[1]) {
-                    return {
-                        judul: "🖼️ Instagram Foto",
-                        tipe: "gambar",
-                        url_file: linkGambarMatch[1],
-                        url_thumbnail: linkGambarMatch[1]
-                    };
-                }
-            }
+        if (data.success && data.medias && data.medias.length > 0) {
+            const item = data.medias[0];
+            return {
+                judul: item.type === 'video' ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
+                tipe: item.type,
+                url_file: item.url,
+                url_thumbnail: item.thumbnail || item.url
+            };
         }
-        throw new Error("Coba metode cadangan...");
+        throw new Error("Coba cadangan 1...");
     }
 
-    // ✅ SUMBER CADANGAN: INSTASAVER
+    // ✅ SUMBER CADANGAN 1: INSTAGRAM-PRIVATE (Kuat)
     catch {
         try {
-            const res2 = await fetch(`https://instasaver.app/api/convert`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url })
-            });
+            const res2 = await fetch(`https://instagram-private-api.vercel.app/api/download?url=${encodeURIComponent(url)}`);
             const data2 = await res2.json();
 
-            if (data2.status === true && data2.medias) {
-                const media = data2.medias[0];
+            if (data2.status === "success") {
                 return {
-                    judul: media.type === 'video' ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
-                    tipe: media.type,
-                    url_file: media.url,
-                    url_thumbnail: media.thumbnail || ""
+                    judul: data2.data[0].type === 'video' ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
+                    tipe: data2.data[0].type,
+                    url_file: data2.data[0].url,
+                    url_thumbnail: data2.data[0].thumbnail || ""
                 };
             }
-            throw new Error("Gagal mengambil data dari sumber kedua...");
+            throw new Error("Coba cadangan 2...");
         }
 
-        // ✅ SUMBER TERAKHIR: IGRAM
+        // ✅ SUMBER CADANGAN 2: SSSINSTA (Paling legendaris)
         catch {
-            const res3 = await fetch(`https://igram.world/api/ig/download`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ url: url, r: 'download' })
-            });
-            const data3 = await res3.json();
+            try {
+                const res3 = await fetch(`https://sssinsta.com/action/download?url=${encodeURIComponent(url)}`);
+                const data3 = await res3.json();
 
-            if (data3.success && data3.data) {
-                return {
-                    judul: data3.data.is_video ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
-                    tipe: data3.data.is_video ? 'video' : 'gambar',
-                    url_file: data3.data.url,
-                    url_thumbnail: data3.data.thumbnail || ""
-                };
+                if (data3.links && data3.links.length > 0) {
+                    const linkValid = data3.links.find(l => l.url);
+                    if (linkValid) {
+                        const tipe = linkValid.type.includes('mp4') ? 'video' : 'gambar';
+                        return {
+                            judul: tipe === 'video' ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
+                            tipe: tipe,
+                            url_file: linkValid.url,
+                            url_thumbnail: ""
+                        };
+                    }
+                }
+                throw new Error("Gagal total, pastikan link & akun publik");
+            }
+            catch {
+                throw new Error("❌ Gagal Ambil Data IG. Coba di Vercel, localhost sering diblokir browser.");
             }
         }
     }
-
-    // Kalau semua cara gagal
-    throw new Error("❌ GAGAL TOTAL! Pastikan:\n1. Link benar\n2. Akun tidak diprivat\n3. Coba lagi nanti");
 }
 
 // --- TAMPILKAN HASILNYA ---

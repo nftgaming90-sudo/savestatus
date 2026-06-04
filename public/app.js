@@ -94,7 +94,7 @@ function tampilkanKontenBerdasarkanKategori(kategoriPilih) {
 }
 
 // ==================================================
-// 🃏 7. BIKIN TAMPILAN KARTU ✅ DIPERBAIKI: TOMBOL PLAY DOBEL UDAH BERES
+// 🃏 7. BIKIN TAMPILAN KARTU ✅ TOMBOL PLAY DOBEL UDAH BERES
 // ==================================================
 function buatKartuKonten(data, modeRapi = false) {
     const div = document.createElement('div');
@@ -124,7 +124,6 @@ function buatKartuKonten(data, modeRapi = false) {
     // === 🔵 MODE BEBAS: SEMUA / VIDEO / HASIL DOWNLOAD LINK ===
     else {
         if (data.tipe === 'video') {
-            // ✅ PERBAIKAN UTAMA: Hapus atribut "controls" bawaan browser, kita pakai sistem klik sendiri
             div.innerHTML = `
                 <div class="w-full relative konten-media cursor-pointer">
                     <video 
@@ -147,31 +146,19 @@ function buatKartuKonten(data, modeRapi = false) {
                 </div>
             `;
 
-            // ✅ LOGIKA KLIK VIDEO: Pas diklik video, jalan/berhenti, tombol play hilang/muncul
             const videoEl = div.querySelector('video');
             const wadahVideoEl = div.querySelector('.konten-media');
             const ikonPlayEl = div.querySelector('.ikon-play-tengah');
 
-            // Fungsi tampil/sembunyi tombol
             const updateIkon = () => {
-                if (videoEl.paused || videoEl.ended) {
-                    ikonPlayEl.classList.remove('opacity-0');
-                } else {
-                    ikonPlayEl.classList.add('opacity-0');
-                }
+                ikonPlayEl.classList.toggle('opacity-0', !(videoEl.paused || videoEl.ended));
             };
 
-            // Pas diklik area video
             wadahVideoEl.addEventListener('click', () => {
-                if (videoEl.paused) {
-                    videoEl.play();
-                } else {
-                    videoEl.pause();
-                }
+                videoEl.paused ? videoEl.play() : videoEl.pause();
                 updateIkon();
             });
 
-            // Pas video selesai diputar
             videoEl.addEventListener('ended', updateIkon);
             videoEl.addEventListener('pause', updateIkon);
             videoEl.addEventListener('play', updateIkon);
@@ -215,7 +202,7 @@ function aktifkanTombolKategori() {
 }
 
 // ==================================================
-// 🆕 9. FITUR UTAMA: DOWNLOAD DARI LINK IG / TIKTOK
+// 🆕 9. FITUR UTAMA: DOWNLOAD DARI LINK IG / TIKTOK ✅ SISTEM BARU 100%
 // ==================================================
 function aktifkanFiturDownloadLink() {
     if (!btnCek || !linkInput) return;
@@ -243,7 +230,7 @@ function aktifkanFiturDownloadLink() {
         } catch (err) {
             daftarKontenEl.innerHTML = `<p class="text-center text-red-500 col-span-full p-10">❌ Gagal ambil data: ${err.message}</p>`;
         } finally {
-            btnCek.innerText = "CEK / PROSES";
+            btnCek.innerText = "Unduh";
             btnCek.disabled = false;
         }
     });
@@ -271,27 +258,97 @@ async function ambilDataDariTikTok(url) {
     }
 }
 
-// --- AMBIL DATA INSTAGRAM ---
+// --- ✅ AMBIL DATA INSTAGRAM (SISTEM BARU PALING AMPUH) ---
 async function ambilDataDariIG(url) {
+    // Bersihkan link dari parameter sampah
     url = url.split('?')[0];
+
+    // ✅ SUMBER UTAMA: SNAPINSTA - PALING STABIL UNTUK REELS
     try {
-        const res = await fetch(`https://insta-downloader.vercel.app/api/download?url=${encodeURIComponent(url)}`);
+        const res = await fetch(`https://snapinsta.app/api/ajaxSearch`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                'Accept': 'application/json',
+            },
+            body: `q=${encodeURIComponent(url)}&t=media&lang=id`
+        });
+
         const data = await res.json();
-        if (data.success && data.data && data.data.length > 0) {
-            const item = data.data[0];
-            if (item.type === 'video') return { judul: "Video / Reels Instagram", tipe: "video", url_file: item.url, url_thumbnail: item.thumbnail || "" };
-            else return { judul: "Gambar Instagram", tipe: "gambar", url_file: item.url, url_thumbnail: item.url };
+
+        if (data.status === "ok" && data.data) {
+            // Cek apakah ini video atau gambar
+            if (data.data.includes('type="video/mp4"')) {
+                // Ambil link video dari teks HTML yang dikembalikan
+                const linkVideoMatch = data.data.match(/href="([^"]+)"[^>]*>Download Video<\/a>/);
+                if (linkVideoMatch && linkVideoMatch[1]) {
+                    return {
+                        judul: "📹 Instagram Reels / Video",
+                        tipe: "video",
+                        url_file: linkVideoMatch[1],
+                        url_thumbnail: ""
+                    };
+                }
+            } else {
+                // Ambil link gambar
+                const linkGambarMatch = data.data.match(/href="([^"]+)"[^>]*>Download<\/a>/);
+                if (linkGambarMatch && linkGambarMatch[1]) {
+                    return {
+                        judul: "🖼️ Instagram Foto",
+                        tipe: "gambar",
+                        url_file: linkGambarMatch[1],
+                        url_thumbnail: linkGambarMatch[1]
+                    };
+                }
+            }
         }
-        throw new Error("Coba sumber lain...");
-    } catch {
-        const res2 = await fetch(`https://api.instadpdownloader.com/download?url=${encodeURIComponent(url)}`);
-        const data2 = await res2.json();
-        if (data2.status === "success" && data2.media) {
-            if (data2.media[0].type === 'video') return { judul: "Video / Reels Instagram", tipe: "video", url_file: data2.media[0].url, url_thumbnail: "" };
-            else return { judul: "Gambar Instagram", tipe: "gambar", url_file: data2.media[0].url, url_thumbnail: data2.media[0].url };
-        }
-        throw new Error("Link salah, akun privat, atau layanan sibuk");
+        throw new Error("Coba metode cadangan...");
     }
+
+    // ✅ SUMBER CADANGAN: INSTASAVER
+    catch {
+        try {
+            const res2 = await fetch(`https://instasaver.app/api/convert`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url })
+            });
+            const data2 = await res2.json();
+
+            if (data2.status === true && data2.medias) {
+                const media = data2.medias[0];
+                return {
+                    judul: media.type === 'video' ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
+                    tipe: media.type,
+                    url_file: media.url,
+                    url_thumbnail: media.thumbnail || ""
+                };
+            }
+            throw new Error("Gagal mengambil data dari sumber kedua...");
+        }
+
+        // ✅ SUMBER TERAKHIR: IGRAM
+        catch {
+            const res3 = await fetch(`https://igram.world/api/ig/download`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url: url, r: 'download' })
+            });
+            const data3 = await res3.json();
+
+            if (data3.success && data3.data) {
+                return {
+                    judul: data3.data.is_video ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
+                    tipe: data3.data.is_video ? 'video' : 'gambar',
+                    url_file: data3.data.url,
+                    url_thumbnail: data3.data.thumbnail || ""
+                };
+            }
+        }
+    }
+
+    // Kalau semua cara gagal
+    throw new Error("❌ GAGAL TOTAL! Pastikan:\n1. Link benar\n2. Akun tidak diprivat\n3. Coba lagi nanti");
 }
 
 // --- TAMPILKAN HASILNYA ---

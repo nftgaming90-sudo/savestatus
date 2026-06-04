@@ -140,7 +140,7 @@ function buatKartuKonten(data, modeRapi = false) {
                 <div class="p-3">
                     <h3 class="font-medium text-sm mb-2">${data.judul}</h3>
                     <div class="flex gap-2">
-                        <button class="btn-unduh flex-1 bg-utama text-white text-xs-py-2 rounded-lg" data-url="${data.url_file}">Unduh</button>
+                        <button class="btn-unduh flex-1 bg-utama text-white text-xs py-2 rounded-lg" data-url="${data.url_file}">Unduh</button>
                         <button class="btn-bagikan flex-1 bg-gray-200 dark:bg-gray-700 text-xs py-2 rounded-lg" data-url="${data.url_file}">Bagikan</button>
                     </div>
                 </div>
@@ -202,7 +202,7 @@ function aktifkanTombolKategori() {
 }
 
 // ==================================================
-// 🆕 9. FITUR UTAMA: DOWNLOAD DARI LINK IG / TIKTOK ✅ VERSI SERVER
+// 🆕 9. FITUR UTAMA: DOWNLOAD DARI LINK IG / TIKTOK ✅ SISTEM FASTDL.APP
 // ==================================================
 function aktifkanFiturDownloadLink() {
     if (!btnCek || !linkInput) return;
@@ -258,66 +258,105 @@ async function ambilDataDariTikTok(url) {
     }
 }
 
-// --- ✅ AMBIL DATA INSTAGRAM (VERSI SERVER VERCEL - DIJAMIN JALAN) ---
+// --- ✅ AMBIL DATA INSTAGRAM (DIPERBARUI: SISTEM FASTDL TERBARU) ---
 async function ambilDataDariIG(url) {
-    url = url.split('?')[0]; // Bersihkan link
+    // Bersihkan link dari parameter tambahan
+    url = url.split('?')[0];
+    const linkMurni = encodeURIComponent(url);
 
-    // ✅ SUMBER UTAMA: IGBANG (Sangat stabil di server luar)
+    // 🔥 API UTAMA: Sama persis fastdl.app
     try {
-        const res = await fetch(`https://igbang.com/api/v1/download?url=${encodeURIComponent(url)}`);
+        const res = await fetch(`https://api.fastdl.app/ig?url=${linkMurni}`, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/json',
+                'Origin': 'https://fastdl.app',
+                'Referer': 'https://fastdl.app/',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
+        });
+
+        if (!res.ok) throw new Error("API utama tidak merespon");
         const data = await res.json();
 
-        if (data.success && data.medias && data.medias.length > 0) {
-            const item = data.medias[0];
+        if (data.status === "success" && data.data?.medias?.length > 0) {
+            const media = data.data.medias[0];
             return {
-                judul: item.type === 'video' ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
-                tipe: item.type,
-                url_file: item.url,
-                url_thumbnail: item.thumbnail || item.url
+                judul: media.type === 'video' ? "📹 Instagram Reels" : "🖼️ Instagram Foto",
+                tipe: media.type,
+                url_file: media.url,
+                url_thumbnail: media.thumbnail || media.url
             };
         }
-        throw new Error("Coba cadangan 1...");
+        throw new Error("Data tidak ditemukan di API utama");
     }
 
-    // ✅ SUMBER CADANGAN 1: INSTAGRAM-PRIVATE (Kuat)
+    // 🔥 CADANGAN 1: Domain cadangan fastdl
     catch {
         try {
-            const res2 = await fetch(`https://instagram-private-api.vercel.app/api/download?url=${encodeURIComponent(url)}`);
+            const res2 = await fetch(`https://api.instadl.app/process?link=${linkMurni}`, {
+                headers: { 'Accept': 'application/json' }
+            });
             const data2 = await res2.json();
 
-            if (data2.status === "success") {
+            if (data2.success && data2.files?.length > 0) {
+                const file = data2.files[0];
                 return {
-                    judul: data2.data[0].type === 'video' ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
-                    tipe: data2.data[0].type,
-                    url_file: data2.data[0].url,
-                    url_thumbnail: data2.data[0].thumbnail || ""
+                    judul: file.ext === 'mp4' ? "📹 Instagram Reels" : "🖼️ Instagram Foto",
+                    tipe: file.ext === 'mp4' ? 'video' : 'gambar',
+                    url_file: file.url,
+                    url_thumbnail: file.thumb || ""
                 };
             }
-            throw new Error("Coba cadangan 2...");
+            throw new Error("Cadangan 1 gagal");
         }
 
-        // ✅ SUMBER CADANGAN 2: SSSINSTA (Paling legendaris)
+        // 🔥 CADANGAN 2: Sistem proxy terenkripsi
         catch {
             try {
-                const res3 = await fetch(`https://sssinsta.com/action/download?url=${encodeURIComponent(url)}`);
+                const res3 = await fetch(`https://igdownloader.app/api/ajaxSearch`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Referer': 'https://igdownloader.app/'
+                    },
+                    body: `q=${linkMurni}&t=media&lang=en`
+                });
                 const data3 = await res3.json();
 
-                if (data3.links && data3.links.length > 0) {
-                    const linkValid = data3.links.find(l => l.url);
-                    if (linkValid) {
-                        const tipe = linkValid.type.includes('mp4') ? 'video' : 'gambar';
-                        return {
-                            judul: tipe === 'video' ? "📹 Instagram Reels / Video" : "🖼️ Instagram Foto",
-                            tipe: tipe,
-                            url_file: linkValid.url,
-                            url_thumbnail: ""
-                        };
+                if (data3.status === "ok") {
+                    // Cari link unduh dari konten respon
+                    const linkVideo = data3.data.match(/href="([^"]+\.mp4[^"]*)"/);
+                    const linkGambar = data3.data.match(/href="([^"]+\.jpg[^"]*)"/);
+
+                    if (linkVideo?.[1]) {
+                        return { judul: "📹 Instagram Reels", tipe: "video", url_file: linkVideo[1], url_thumbnail: "" };
+                    }
+                    if (linkGambar?.[1]) {
+                        return { judul: "🖼️ Instagram Foto", tipe: "gambar", url_file: linkGambar[1], url_thumbnail: linkGambar[1] };
                     }
                 }
-                throw new Error("Gagal total, pastikan link & akun publik");
+                throw new Error("Cadangan 2 gagal");
             }
+
+            // ❌ PESAN AKHIR JIKA SEMUA GAGAL
             catch {
-                throw new Error("❌ Gagal Ambil Data IG. Coba di Vercel, localhost sering diblokir browser.");
+                throw new Error(`
+❌ Konten dibatasi Instagram!
+
+Link yang kamu kirim:
+${url}
+
+Saat ini IG menerapkan pembatasan ketat:
+- Wajib login untuk melihat meski akun publik
+- Memblokir akses langsung dari situs lain
+- Hanya bisa diakses lewat server proxy khusus
+
+✅ Solusi:
+1. Coba lewat fastdl.app dulu untuk memastikan
+2. Atau gunakan server proxy sendiri nanti
+                `);
             }
         }
     }

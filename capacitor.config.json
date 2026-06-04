@@ -1,0 +1,15 @@
+{
+    "appId": "com.inx2media.savestatus",
+    "appName": "Inx2Media SaveStatus",
+    "webDir": "public",
+    "server": {
+        "androidScheme": "https"
+    },
+    "plugins": {
+        "Filesystem": {
+            "androidPermission": "public",
+            "requestLegacyExternalStorage": true,
+            "forceAndroidUriScheme": true
+        }
+    }
+}

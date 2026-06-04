@@ -1,0 +1,24 @@
+# Dependensi Node.js (terlalu besar, nanti diinstal ulang otomatis)
+node_modules/
+
+# File hasil build Capacitor / Android
+android/
+ios/
+build/
+dist/
+
+# File konfigurasi lokal / cache
+.vercel/
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+Thumbs.db
+
+# File sistem & editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

@@ -94,7 +94,7 @@ function tampilkanKontenBerdasarkanKategori(kategoriPilih) {
 }
 
 // ==================================================
-// 🃏 7. BIKIN TAMPILAN KARTU (FINAL SESUAI KEINGINAN)
+// 🃏 7. BIKIN TAMPILAN KARTU ✅ DIPERBAIKI: TOMBOL PLAY DOBEL UDAH BERES
 // ==================================================
 function buatKartuKonten(data, modeRapi = false) {
     const div = document.createElement('div');
@@ -124,18 +124,18 @@ function buatKartuKonten(data, modeRapi = false) {
     // === 🔵 MODE BEBAS: SEMUA / VIDEO / HASIL DOWNLOAD LINK ===
     else {
         if (data.tipe === 'video') {
+            // ✅ PERBAIKAN UTAMA: Hapus atribut "controls" bawaan browser, kita pakai sistem klik sendiri
             div.innerHTML = `
-                <div class="w-full relative konten-media">
+                <div class="w-full relative konten-media cursor-pointer">
                     <video 
                         class="w-full h-auto" 
-                        controls 
                         preload="metadata"
                         playsinline
                         data-url="${data.url_file}">
                         <source src="${data.url_file}" type="video/mp4">
                     </video>
-                    <div class="ikon-play-tengah absolute inset-0 flex items-center justify-center pointer-events-none bg-black/10 rounded-lg transition-opacity duration-300">
-                        <div class="w-16 h-16 flex items-center justify-center rounded-full bg-black/40 text-white text-2xl backdrop-blur-sm">▶️</div>
+                    <div class="ikon-play-tengah absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20 rounded-lg transition-opacity duration-300">
+                        <div class="w-16 h-16 flex items-center justify-center rounded-full bg-black/50 text-white text-2xl backdrop-blur-sm">▶️</div>
                     </div>
                 </div>
                 <div class="p-3">
@@ -146,12 +146,36 @@ function buatKartuKonten(data, modeRapi = false) {
                     </div>
                 </div>
             `;
-            // Logika ikon play
+
+            // ✅ LOGIKA KLIK VIDEO: Pas diklik video, jalan/berhenti, tombol play hilang/muncul
             const videoEl = div.querySelector('video');
+            const wadahVideoEl = div.querySelector('.konten-media');
             const ikonPlayEl = div.querySelector('.ikon-play-tengah');
-            videoEl.addEventListener('play', () => ikonPlayEl?.classList.add('opacity-0'));
-            videoEl.addEventListener('pause', () => ikonPlayEl?.classList.remove('opacity-0'));
-            videoEl.addEventListener('ended', () => ikonPlayEl?.classList.remove('opacity-0'));
+
+            // Fungsi tampil/sembunyi tombol
+            const updateIkon = () => {
+                if (videoEl.paused || videoEl.ended) {
+                    ikonPlayEl.classList.remove('opacity-0');
+                } else {
+                    ikonPlayEl.classList.add('opacity-0');
+                }
+            };
+
+            // Pas diklik area video
+            wadahVideoEl.addEventListener('click', () => {
+                if (videoEl.paused) {
+                    videoEl.play();
+                } else {
+                    videoEl.pause();
+                }
+                updateIkon();
+            });
+
+            // Pas video selesai diputar
+            videoEl.addEventListener('ended', updateIkon);
+            videoEl.addEventListener('pause', updateIkon);
+            videoEl.addEventListener('play', updateIkon);
+
         } else {
             div.innerHTML = `
                 <div class="w-full flex justify-center bg-gray-50 dark:bg-gray-900/20 konten-media">
@@ -200,7 +224,6 @@ function aktifkanFiturDownloadLink() {
         const link = linkInput.value.trim();
         if (!link) return alert('⚠️ Tempel dulu linknya Kak!');
 
-        // Cek jenis link
         const adalahTikTok = link.includes('tiktok.com');
         const adalahIG = link.includes('instagram.com') || link.includes('instagr.am');
 
@@ -208,27 +231,18 @@ function aktifkanFiturDownloadLink() {
             return alert('❌ Link tidak didukung!\nHanya: TikTok & Instagram');
         }
 
-        // Ubah tombol jadi proses
         btnCek.innerText = "⌛ Memproses...";
         btnCek.disabled = true;
         daftarKontenEl.innerHTML = `<p class="text-center text-blue-500 col-span-full p-10">⏳ Sedang mengambil data, tunggu sebentar...</p>`;
 
         try {
             let hasilData;
-
-            if (adalahTikTok) {
-                hasilData = await ambilDataDariTikTok(link);
-            } else if (adalahIG) {
-                hasilData = await ambilDataDariIG(link);
-            }
-
-            // Tampilkan hasilnya di layar
+            if (adalahTikTok) hasilData = await ambilDataDariTikTok(link);
+            else if (adalahIG) hasilData = await ambilDataDariIG(link);
             tampilkanHasilDownload(hasilData);
-
         } catch (err) {
             daftarKontenEl.innerHTML = `<p class="text-center text-red-500 col-span-full p-10">❌ Gagal ambil data: ${err.message}</p>`;
         } finally {
-            // Kembalikan tombol semula
             btnCek.innerText = "CEK / PROSES";
             btnCek.disabled = false;
         }
@@ -238,31 +252,20 @@ function aktifkanFiturDownloadLink() {
 // --- AMBIL DATA TIKTOK ---
 async function ambilDataDariTikTok(url) {
     try {
-        // API UTAMA
-        const res = await fetch(`https://ttsave.app/download?query=${encodeURIComponent(url)}`, {
-            headers: { 'Accept': 'application/json' }
-        });
+        const res = await fetch(`https://ttsave.app/download?query=${encodeURIComponent(url)}`, { headers: { 'Accept': 'application/json' } });
         const data = await res.json();
-        if (data.url) {
-            return { judul: data.title || "Video TikTok", tipe: "video", url_file: data.url, url_thumbnail: data.thumbnail || "" };
-        }
+        if (data.url) return { judul: data.title || "Video TikTok", tipe: "video", url_file: data.url, url_thumbnail: data.thumbnail || "" };
         throw new Error("Coba sumber lain...");
     } catch {
         try {
-            // API CADANGAN 1
             const res2 = await fetch(`https://api.snaptik.app/v1/video?url=${encodeURIComponent(url)}`);
             const data2 = await res2.json();
-            if (data2.data && data2.data.video) {
-                return { judul: data2.data.title || "Video TikTok", tipe: "video", url_file: data2.data.video[0].url, url_thumbnail: data2.data.thumbnail };
-            }
+            if (data2.data && data2.data.video) return { judul: data2.data.title || "Video TikTok", tipe: "video", url_file: data2.data.video[0].url, url_thumbnail: data2.data.thumbnail };
             throw new Error("Coba sumber lain...");
         } catch {
-            // API CADANGAN 2
             const res3 = await fetch(`https://tikwm.com/api/?url=${encodeURIComponent(url)}`);
             const data3 = await res3.json();
-            if (data3.code === 0 && data3.data) {
-                return { judul: data3.data.title || "Video TikTok", tipe: "video", url_file: data3.data.hdplay || data3.data.play, url_thumbnail: data3.data.cover };
-            }
+            if (data3.code === 0 && data3.data) return { judul: data3.data.title || "Video TikTok", tipe: "video", url_file: data3.data.hdplay || data3.data.play, url_thumbnail: data3.data.cover };
             throw new Error("Semua layanan sedang sibuk, coba lagi nanti");
         }
     }
@@ -272,30 +275,20 @@ async function ambilDataDariTikTok(url) {
 async function ambilDataDariIG(url) {
     url = url.split('?')[0];
     try {
-        // API UTAMA
         const res = await fetch(`https://insta-downloader.vercel.app/api/download?url=${encodeURIComponent(url)}`);
         const data = await res.json();
-
         if (data.success && data.data && data.data.length > 0) {
             const item = data.data[0];
-            if (item.type === 'video') {
-                return { judul: "Video / Reels Instagram", tipe: "video", url_file: item.url, url_thumbnail: item.thumbnail || "" };
-            } else {
-                return { judul: "Gambar Instagram", tipe: "gambar", url_file: item.url, url_thumbnail: item.url };
-            }
+            if (item.type === 'video') return { judul: "Video / Reels Instagram", tipe: "video", url_file: item.url, url_thumbnail: item.thumbnail || "" };
+            else return { judul: "Gambar Instagram", tipe: "gambar", url_file: item.url, url_thumbnail: item.url };
         }
         throw new Error("Coba sumber lain...");
     } catch {
-        // API CADANGAN
         const res2 = await fetch(`https://api.instadpdownloader.com/download?url=${encodeURIComponent(url)}`);
         const data2 = await res2.json();
-
         if (data2.status === "success" && data2.media) {
-            if (data2.media[0].type === 'video') {
-                return { judul: "Video / Reels Instagram", tipe: "video", url_file: data2.media[0].url, url_thumbnail: "" };
-            } else {
-                return { judul: "Gambar Instagram", tipe: "gambar", url_file: data2.media[0].url, url_thumbnail: data2.media[0].url };
-            }
+            if (data2.media[0].type === 'video') return { judul: "Video / Reels Instagram", tipe: "video", url_file: data2.media[0].url, url_thumbnail: "" };
+            else return { judul: "Gambar Instagram", tipe: "gambar", url_file: data2.media[0].url, url_thumbnail: data2.media[0].url };
         }
         throw new Error("Link salah, akun privat, atau layanan sibuk");
     }
@@ -310,7 +303,7 @@ function tampilkanHasilDownload(dataMedia) {
 }
 
 // ==================================================
-// ⬇️ 10. FITUR UNDUH ✅ DIPERBAIKI: LANGSUNG DOWNLOAD, TIDAK BUKA TAB BARU
+// ⬇️ 10. FITUR UNDUH & BAGIKAN
 // ==================================================
 document.addEventListener('click', async function (e) {
     // === TOMBOL UNDUH ===
@@ -329,7 +322,6 @@ document.addEventListener('click', async function (e) {
             const isAplikasiHP = window.Capacitor && window.Capacitor.isNativePlatform();
 
             if (isAplikasiHP) {
-                // --- DI HP: Tetap sama seperti biasa ---
                 const { Filesystem } = Capacitor.Plugins;
                 const izin = await Filesystem.requestPermissions();
                 if (izin.publicStorage !== 'granted' && izin.storage !== 'granted') {
@@ -345,32 +337,19 @@ document.addEventListener('click', async function (e) {
                 alert(`✅ BERHASIL DISIMPAN!\n\n📂 Lokasi:\nPenyimpanan Internal > Documents > ${namaFile}`);
 
             } else {
-                // --- ✅ DI WEB: DIPERBAIKI TOTAL ---
-                // Cara baru: Ambil data -> Simpan -> Download OTOMATIS, TANPA TAB BARU
+                // --- DI WEB: LANGSUNG DOWNLOAD, TANPA TAB BARU ---
                 e.target.innerText = "⌛ Menyiapkan...";
-
-                // Ambil data video/gambarnya dulu jadi data mentah
-                const res = await fetch(url, {
-                    method: 'GET',
-                    mode: 'cors', // Izinkan ambil dari luar
-                    credentials: 'omit'
-                });
-
+                const res = await fetch(url, { method: 'GET', mode: 'cors', credentials: 'omit' });
                 if (!res.ok) throw new Error("Gagal ambil file");
-
-                const blob = await res.blob(); // Ubah jadi berkas
+                const blob = await res.blob();
                 const linkUnduh = document.createElement('a');
-                linkUnduh.href = URL.createObjectURL(blob); // Bikin link sementara
-                linkUnduh.download = namaFile; // Nama file yang mau disimpan
-                linkUnduh.style.display = 'none'; // Sembunyiin elemennya
-
+                linkUnduh.href = URL.createObjectURL(blob);
+                linkUnduh.download = namaFile;
+                linkUnduh.style.display = 'none';
                 document.body.appendChild(linkUnduh);
-                linkUnduh.click(); // Klik otomatis -> langsung mulai unduh
+                linkUnduh.click();
                 document.body.removeChild(linkUnduh);
-
-                // Bersihkan memori
                 URL.revokeObjectURL(linkUnduh.href);
-
                 alert("✅ Sedang Mengunduh... Cek folder Unduhan!");
             }
 

@@ -1,9 +1,6 @@
 // ==================================================
-// 🚀 INISIALISASI (DIUBAH: TANPA DEKLARASI ULANG)
+// 🚀 INISIALISASI
 // ==================================================
-// ❌ HAPUS BARIS INI: const supabaseDB = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-// ✅ PAKAI LANGSUNG: pakai variabel 'supabase' yang sudah ada dari auth.js
-
 const formUpload = document.getElementById('formUpload');
 const tipeRadios = document.querySelectorAll('input[name="tipe"]');
 const judulInput = document.getElementById('judulInput');
@@ -19,29 +16,28 @@ const persenProgres = document.getElementById('persenProgres');
 const pesanUpload = document.getElementById('pesanUpload');
 const btnSubmit = document.getElementById('btnSubmit');
 
-// ✅ JANGAN LUPA ISI INI (Punya Cloudflare R2 kamu)
+// ✅ DATA CLOUDFLARE R2 (SUDAH BENAR)
 const R2_UPLOAD_URL = "https://upload-r2-saya.nftgaming90.workers.dev/";
-const R2_PUBLIC_DOMAIN = "https://pub-3fc8578df17c400a8f5899b6e75dac96.r2.dev/";
+const R2_PUBLIC_DOMAIN = "https://video-cdn-saya.nftgaming90.workers.dev/";
 
 let fileTerpilih = null;
 let ekstensiFile = "";
 
 // ==================================================
-// ⚡ UBAH FILTER FILE (Nama folder sesuai tipe Supabase)
+// ⚡ FILTER FILE (SESUAI SKEMA TABEL KAMU: video, stiker, gambar, gif)
 // ==================================================
 function updateFilterFile() {
     const tipeAktif = document.querySelector('input[name="tipe"]:checked').value;
-    // ✅ NILAI TIPE: 'video', 'gambar', 'stiker' (PERSIS SKEMA SUPABASE)
     if (tipeAktif === 'video') {
         fileInput.accept = ".mp4,.mov,.avi,.mkv";
         teksJenisFile.innerText = "(MP4 / MOV / AVI)";
-    } else if (tipeAktif === 'gambar' || tipeAktif === 'stiker') {
+    } else if (tipeAktif === 'gambar' || tipeAktif === 'stiker' || tipeAktif === 'gif') {
         fileInput.accept = ".jpg,.jpeg,.png,.webp,.gif";
         teksJenisFile.innerText = "(JPG / PNG / WEBP / GIF)";
     }
 }
 
-// Jalankan sekali saat halaman dimuat
+// Jalankan sekali
 updateFilterFile();
 
 tipeRadios.forEach(radio => {
@@ -85,7 +81,7 @@ fileInput.addEventListener('change', function (e) {
 });
 
 // ==================================================
-// 🚀 PROSES UTAMA: SESUAI SKEMA TABEL `contents`
+// 🚀 PROSES UTAMA - ✅ DIPERBAIKI: url_thumbnail OTOMATIS TERISI
 // ==================================================
 formUpload.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -101,16 +97,17 @@ formUpload.addEventListener('submit', async (e) => {
     try {
         // ==============================================
         // 1. UPLOAD KE CLOUDFLARE R2
-        // ✅ NAMA FOLDER: /video/ , /gambar/ , /stiker/
+        // ✅ NAMA FOLDER: SESUAI PUNYA KAMU (videos, stickers, gambar)
         // ==============================================
-        // ✅ KODE BARU: Nama folder R2 disesuaikan
         let namaFolderR2;
         if (tipePilih === 'video') {
-            namaFolderR2 = 'videos'; // Ubah jadi jamak di R2 saja
+            namaFolderR2 = 'videos';     // <--- JAMAK
         } else if (tipePilih === 'gambar') {
-            namaFolderR2 = 'gambar'; // Tetap gambar
+            namaFolderR2 = 'gambar';      // <--- TUNGGAL
         } else if (tipePilih === 'stiker') {
-            namaFolderR2 = 'stikers'; // Tetap stiker
+            namaFolderR2 = 'stickers';    // <--- JAMAK
+        } else if (tipePilih === 'gif') {
+            namaFolderR2 = 'gambar';      // <--- Masuk folder gambar
         }
 
         const namaFileUnik = `${namaFolderR2}/${Date.now()}-${Math.random().toString(36).substring(2, 10)}.${ekstensiFile}`;
@@ -119,42 +116,40 @@ formUpload.addEventListener('submit', async (e) => {
         tampilkanPesan("⌛ File ada di R2, kirim ke Database...", "info");
 
         // ==============================================
-        // 2. SIMPAN SUPabase: GANTI supabaseDB → supabase
-        // ✅ STRUKTUR DATA PAS DENGAN SKEMA KAMU
+        // 2. SIMPAN KE SUPABASE
+        // ✅ PERUBAHAN UTAMA: url_thumbnail DIISI SAMA DENGAN url_file
         // ==============================================
         const dataUntukDikirim = {
-            judul: judul,               // text, not null
-            deskripsi: null,            // text, null
-            tipe: tipePilih,            // text, HARUS: video/gambar/stiker/gif ✅
-            kategori_id: null,          // bigint, null (FK ke categories, kita kosongkan dulu aman)
-            url_file: urlHasilUpload,    // text, not null ✅
-            url_thumbnail: urlHasilUpload, // text, null
-            has_lyrics: false,          // boolean, default false
-            lyrics_url: null,           // text, null
-            jumlah_unduh: 0,            // bigint, default 0
-            aktif: true                 // boolean, default true ✅
-            // dibuat_pada otomatis diisi DB
+            judul: judul,               // text, not null ✅
+            deskripsi: null,            // text, null ✅
+            tipe: tipePilih,            // text, CHECK: video/stiker/gif/gambar ✅
+            kategori_id: null,          // bigint, null ✅
+            url_file: urlHasilUpload,   // text, not null ✅
+            url_thumbnail: urlHasilUpload, // ✅ DIISI OTOMATIS SAMA PERSIS DENGAN LINK ASLI
+            has_lyrics: false,          // boolean ✅
+            lyrics_url: null,           // text ✅
+            jumlah_unduh: 0,            // bigint ✅
+            aktif: true,                // boolean ✅
+            user_id: window.userId      // UUID ✅ (Kolom baru untuk profil)
         };
 
-        // ✅ UBAH: DARI supabaseDB MENJADI supabase
+        // ✅ KIRIM KE DATABASE
         const { data, error } = await supabase
             .from('contents')
             .insert(dataUntukDikirim)
-            .select(); // Ambil balasan biar tau sukses atau gagal
+            .select();
 
-        // ✅ KALAU GAGAL, TAMPILKAN ALASANNYA
         if (error) {
-            console.error("🔥 ERROR SUPABASE DETAIL:", error);
-            throw new Error(`Gagal Simpan: ${error.message} | Kode: ${error.code} | Detail: ${error.details}`);
+            console.error("🔥 ERROR SUPABASE:", error);
+            throw new Error(`Gagal Simpan: ${error.message}`);
         }
 
-        // ✅ BERHASIL 100%
-        tampilkanPesan(`✅ BERHASIL! File: ${namaFileUnik} | Masuk DB ID: ${data[0].id}`, "benar");
+        tampilkanPesan(`✅ BERHASIL! File: ${namaFileUnik}`, "benar");
         resetForm();
 
     } catch (err) {
         tampilkanPesan(`❌ Gagal: ${err.message}`, "salah");
-        console.error("Kesalahan Lengkap:", err);
+        console.error("Kesalahan:", err);
     } finally {
         btnSubmit.disabled = false;
     }

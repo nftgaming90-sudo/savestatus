@@ -120,7 +120,7 @@ function tampilkanKontenBerdasarkanKategori(kategoriPilih) {
 }
 
 // ==================================================
-// 🃏 7. BIKIN TAMPILAN KARTU ✅ TOMBOL PLAY DOBEL UDAH BERES
+// 🃏 7. BIKIN TAMPILAN KARTU ✅ PERBAIKAN ERROR + THUMB OTOMATIS
 // ==================================================
 function buatKartuKonten(data, modeRapi = false) {
     const div = document.createElement('div');
@@ -132,9 +132,10 @@ function buatKartuKonten(data, modeRapi = false) {
         div.innerHTML = `
             <div class="w-full h-[280px] bg-gray-100 dark:bg-gray-900 flex items-center justify-center overflow-hidden konten-media">
                 <img 
-                    src="${data.url_thumbnail || data.url_file}" 
+                    src="${data.url_file}" 
                     alt="${data.judul}" 
                     class="max-w-full max-h-full w-auto h-auto object-contain" 
+                    loading="lazy"
                     onerror="this.src='https://placehold.co/600x400/ff0000/white?text=Gambar+Rusak'">
             </div>
             <div class="p-3">
@@ -147,24 +148,31 @@ function buatKartuKonten(data, modeRapi = false) {
         `;
     }
 
-    // === 🔵 MODE BEBAS: SEMUA / VIDEO / HASIL DOWNLOAD LINK ===
+    // === 🔵 MODE VIDEO: ✅ ADA GAMBAR SAMBUNGAN, TAPI TIDAK NYEDOT DATA BESAR ===
     else {
         if (data.tipe === 'video') {
             div.innerHTML = `
-                <div class="w-full relative konten-media cursor-pointer">
+                <div class="w-full relative konten-media cursor-pointer bg-gray-100 dark:bg-gray-900/50">
+                    <!-- ✅ KOTAK TEMPAT GAMBAR SAMBUNGAN -->
+                    <canvas id="canvas-thumb-${data.id}" class="w-full h-auto object-cover" style="display: block;"></canvas>
+                    
+                    <!-- ✅ VIDEO: DIKUNCI, TIDAK DIMUAT SAMA SEBELUM DIKLIK -->
                     <video 
-                        class="w-full h-auto" 
-                        preload="metadata"
+                        class="w-full h-auto absolute top-0 left-0 z-10" 
+                        preload="none"
                         playsinline
-                        data-url="${data.url_file}">
-                        <source src="${data.url_file}" type="video/mp4">
+                        muted
+                        style="display: none;" 
+                        data-sumber="${data.url_file}"> 
                     </video>
-                    <div class="ikon-play-tengah absolute inset-0 flex items-center justify-center pointer-events-none bg-black/20 rounded-lg transition-opacity duration-300">
-                        <div class="w-16 h-16 flex items-center justify-center rounded-full bg-black/50 text-white text-2xl backdrop-blur-sm">▶️</div>
+                    
+                    <!-- ✅ IKON PLAY -->
+                    <div class="ikon-play-tengah absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                        <div class="w-16 h-16 flex items-center justify-center rounded-full bg-black/30 text-white text-2xl backdrop-blur-sm">▶️</div>
                     </div>
                 </div>
                 <div class="p-3">
-                    <h3 class="font-medium text-sm mb-2">${data.judul}</h3>
+                    <h3 class="font-medium text-sm mb-2 line-clamp-1">${data.judul}</h3>
                     <div class="flex gap-2">
                         <button class="btn-unduh flex-1 bg-utama text-white text-xs py-2 rounded-lg" data-url="${data.url_file}">Unduh</button>
                         <button class="btn-bagikan flex-1 bg-gray-200 dark:bg-gray-700 text-xs py-2 rounded-lg" data-url="${data.url_file}">Bagikan</button>
@@ -175,31 +183,99 @@ function buatKartuKonten(data, modeRapi = false) {
             const videoEl = div.querySelector('video');
             const wadahVideoEl = div.querySelector('.konten-media');
             const ikonPlayEl = div.querySelector('.ikon-play-tengah');
+            const canvasEl = div.querySelector(`#canvas-thumb-${data.id}`);
 
-            const updateIkon = () => {
-                ikonPlayEl.classList.toggle('opacity-0', !(videoEl.paused || videoEl.ended));
+            // ==============================================
+            // ✅ BAGIAN PENTING: BIKIN GAMBAR SAMBUNGAN SENDIRI (SUDAH DIPERBAIKI)
+            // ==============================================
+            const videoSementara = document.createElement('video');
+            videoSementara.crossOrigin = "anonymous"; // Biar aman lewat Cloudflare
+            videoSementara.preload = "metadata"; // ⚠️ Cuma ambil info & gambar awal saja (sedikit banget)
+            videoSementara.muted = true;
+            videoSementara.playsinline = true;
+            videoSementara.src = data.url_file; // Ambil langsung dari link videonya
+
+            // Pas data awal masuk, ambil gambarnya di detik ke 0.1
+            videoSementara.onloadedmetadata = function() {
+                videoSementara.currentTime = 0.1;
             };
 
+            // Gambar sudah siap, gambarkan ke layar jadi sampul
+            videoSementara.onseeked = function() {
+                // Sesuaikan ukuran kanvas sama persis ukuran video
+                canvasEl.width = videoSementara.videoWidth;
+                canvasEl.height = videoSementara.videoHeight;
+                
+                const ctx = canvasEl.getContext('2d');
+                // Gambar frame video ke elemen tampilan
+                ctx.drawImage(videoSementara, 0, 0, canvasEl.width, canvasEl.height);
+                
+                // ✅ HAPUS DATA SEMENTARA BIAR GAK MAKAN KUOTA & MEMORI
+                videoSementara.src = "";
+                videoSementara.load(); // Bersihkan jejak
+            };
+            // ==============================================
+            // SELESAI BIKIN THUMB
+            // ==============================================
+
+
+            // === LOGIKA KLIK PUTAR / JEDA ===
             wadahVideoEl.addEventListener('click', () => {
-                videoEl.paused ? videoEl.play() : videoEl.pause();
-                updateIkon();
+                // 🔄 MATIKAN SEMUA VIDEO LAIN YANG SEDANG BERJALAN
+                document.querySelectorAll('video').forEach(vidLain => {
+                    if (vidLain !== videoEl && !vidLain.paused) {
+                        vidLain.pause();
+                        vidLain.muted = true;
+                        vidLain.style.display = 'none';
+                        vidLain.parentElement.querySelector('.ikon-play-tengah').classList.remove('opacity-0');
+                        vidLain.parentElement.querySelector('canvas').classList.remove('opacity-0');
+                    }
+                });
+
+                // ✅ BARU MULAI MUAT DATA VIDEO ASLI KETIKA DIKLIK
+                if (!videoEl.src) {
+                    videoEl.src = videoEl.getAttribute('data-sumber');
+                    videoEl.load(); // ⚠️ DI SINI BARU MULAI NYEDOT DATA BESAR
+                }
+
+                // === PUTAR ===
+                if(videoEl.paused) {
+                    canvasEl.classList.add('opacity-0'); // Sembunyikan gambar sampul
+                    videoEl.style.display = 'block'; // Munculkan video asli
+                    videoEl.muted = false; // Nyalakan suara
+                    videoEl.play();
+                    ikonPlayEl.classList.add('opacity-0'); // Hilangkan ikon
+                } 
+                // === JEDA ===
+                else {
+                    videoEl.pause();
+                    videoEl.style.display = 'none';
+                    canvasEl.classList.remove('opacity-0'); // Balik lagi ke gambar sampul
+                    ikonPlayEl.classList.remove('opacity-0');
+                }
             });
 
-            videoEl.addEventListener('ended', updateIkon);
-            videoEl.addEventListener('pause', updateIkon);
-            videoEl.addEventListener('play', updateIkon);
+            // === KETIKA VIDEO HABIS BERMAIN ===
+            videoEl.addEventListener('ended', () => {
+                videoEl.style.display = 'none';
+                canvasEl.classList.remove('opacity-0');
+                ikonPlayEl.classList.remove('opacity-0');
+            });
 
-        } else {
+        } 
+        // === BAGIAN GAMBAR BIASA (TETAP SAMA) ===
+        else {
             div.innerHTML = `
                 <div class="w-full flex justify-center bg-gray-50 dark:bg-gray-900/20 konten-media">
                     <img 
-                        src="${data.url_thumbnail || data.url_file}" 
+                        src="${data.url_file}" 
                         alt="${data.judul}" 
                         class="max-w-full max-h-[450px] w-auto h-auto object-contain" 
+                        loading="lazy"
                         onerror="this.src='https://placehold.co/600x400/ff0000/white?text=Gambar+Rusak'">
                 </div>
                 <div class="p-3">
-                    <h3 class="font-medium text-sm mb-2">${data.judul}</h3>
+                    <h3 class="font-medium text-sm mb-2 line-clamp-1">${data.judul}</h3>
                     <div class="flex gap-2">
                         <button class="btn-unduh flex-1 bg-utama text-white text-xs py-2 rounded-lg" data-url="${data.url_file}">Unduh</button>
                         <button class="btn-bagikan flex-1 bg-gray-200 dark:bg-gray-700 text-xs py-2 rounded-lg" data-url="${data.url_file}">Bagikan</button>

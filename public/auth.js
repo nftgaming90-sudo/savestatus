@@ -14,9 +14,12 @@ if (typeof supabase !== 'undefined') {
 }
 
 // ==================================================
-// 🛡️ FUNGSI: KUNCI HALAMAN & SIMPAN TUJUAN
+// 🛡️ FUNGSI: KUNCI HALAMAN - TANPA TERLIHAT SEKILAS
 // ==================================================
 async function wajibLogin() {
+    // Sembunyikan seluruh halaman dulu sampai selesai dicek
+    document.documentElement.style.visibility = 'hidden';
+
     if (!window.supabase) {
         setTimeout(wajibLogin, 50);
         return;
@@ -26,17 +29,19 @@ async function wajibLogin() {
         const { data: { user } } = await window.supabase.auth.getUser();
 
         if (!user) {
-            // ✅ AMBIL NAMA HALAMAN YANG SEDANG DIBUKA
-            const halamanAsal = window.location.pathname.split('/').pop(); // Ambil nama file saja (misal: profil.html)
-            // Simpan di URL biar dibawa ke login
+            // Belum login: langsung alihkan, halaman tidak perlu ditampilkan
+            const halamanAsal = window.location.pathname.split('/').pop();
             window.location.replace(`login.html?pesan=harap_login&tujuan=${halamanAsal}`);
             return;
         }
 
+        // Kalau sudah login: baru tampilkan halaman
+        document.documentElement.style.visibility = 'visible';
         window.userAktif = user;
+        window.userId = user.id
 
     } catch (err) {
-        console.error("Kunci Halaman:", err);
+        console.error("Cek login gagal:", err);
         window.location.replace("login.html");
     }
 }

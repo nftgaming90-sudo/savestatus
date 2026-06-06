@@ -46,7 +46,6 @@ const btnKeluar = document.getElementById('btnKeluar');
 const emailPengguna = document.getElementById('emailPengguna');
 const tandaLogin = document.getElementById('tandaLogin');
 
-
 if (daftarKontenEl) console.log("🟢 [LOG 3] Elemen daftar konten DITEMUKAN");
 else console.error("🔴 [LOG 3] Elemen daftar konten TIDAK ADA di HTML!");
 
@@ -153,10 +152,8 @@ function buatKartuKonten(data, modeRapi = false) {
         if (data.tipe === 'video') {
             div.innerHTML = `
                 <div class="w-full relative konten-media cursor-pointer bg-gray-100 dark:bg-gray-900/50">
-                    <!-- ✅ KOTAK TEMPAT GAMBAR SAMBUNGAN -->
                     <canvas id="canvas-thumb-${data.id}" class="w-full h-auto object-cover" style="display: block;"></canvas>
                     
-                    <!-- ✅ VIDEO: DIKUNCI, TIDAK DIMUAT SAMA SEBELUM DIKLIK -->
                     <video 
                         class="w-full h-auto absolute top-0 left-0 z-10" 
                         preload="none"
@@ -166,8 +163,7 @@ function buatKartuKonten(data, modeRapi = false) {
                         data-sumber="${data.url_file}"> 
                     </video>
                     
-                    <!-- ✅ IKON PLAY -->
-                    <div class="ikon-play-tengah absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                    <div class="ikon-play-tengah absolute inset-0 flex items-center justify-center z-20 pointer-events-none transition-opacity duration-300">
                         <div class="w-16 h-16 flex items-center justify-center rounded-full bg-black/30 text-white text-2xl backdrop-blur-sm">▶️</div>
                     </div>
                 </div>
@@ -186,40 +182,47 @@ function buatKartuKonten(data, modeRapi = false) {
             const canvasEl = div.querySelector(`#canvas-thumb-${data.id}`);
 
             // ==============================================
-            // ✅ BAGIAN PENTING: BIKIN GAMBAR SAMBUNGAN SENDIRI (SUDAH DIPERBAIKI)
+            // ✅ BAGIAN PENTING: BIKIN GAMBAR SAMBUNGAN 
             // ==============================================
-            const videoSementara = document.createElement('video');
-            videoSementara.crossOrigin = "anonymous"; // Biar aman lewat Cloudflare
-            videoSementara.preload = "metadata"; // ⚠️ Cuma ambil info & gambar awal saja (sedikit banget)
-            videoSementara.muted = true;
-            videoSementara.playsinline = true;
-            videoSementara.src = data.url_file; // Ambil langsung dari link videonya
+            const ctx = canvasEl.getContext('2d');
 
-            // Pas data awal masuk, ambil gambarnya di detik ke 0.1
-            videoSementara.onloadedmetadata = function() {
-                videoSementara.currentTime = 0.1;
-            };
+            // PERBAIKAN: Jika ada url_thumbnail, pakai itu agar tidak membebani memori/jaringan
+            if (data.url_thumbnail && data.url_thumbnail.trim() !== '') {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = function () {
+                    canvasEl.width = img.width;
+                    canvasEl.height = img.height;
+                    ctx.drawImage(img, 0, 0, canvasEl.width, canvasEl.height);
+                };
+                img.src = data.url_thumbnail;
+            }
+            // Jika tidak ada thumbnail, baru jalankan videoSementara milikmu
+            else {
+                const videoSementara = document.createElement('video');
+                videoSementara.crossOrigin = "anonymous";
+                videoSementara.preload = "metadata";
+                videoSementara.muted = true;
+                videoSementara.playsinline = true;
+                videoSementara.src = data.url_file;
 
-            // Gambar sudah siap, gambarkan ke layar jadi sampul
-            videoSementara.onseeked = function() {
-                // Sesuaikan ukuran kanvas sama persis ukuran video
-                canvasEl.width = videoSementara.videoWidth;
-                canvasEl.height = videoSementara.videoHeight;
-                
-                const ctx = canvasEl.getContext('2d');
-                // Gambar frame video ke elemen tampilan
-                ctx.drawImage(videoSementara, 0, 0, canvasEl.width, canvasEl.height);
-                
-                // ✅ HAPUS DATA SEMENTARA BIAR GAK MAKAN KUOTA & MEMORI
-                videoSementara.src = "";
-                videoSementara.load(); // Bersihkan jejak
-            };
+                videoSementara.onloadedmetadata = function () {
+                    videoSementara.currentTime = 0.1;
+                };
+
+                videoSementara.onseeked = function () {
+                    canvasEl.width = videoSementara.videoWidth;
+                    canvasEl.height = videoSementara.videoHeight;
+                    ctx.drawImage(videoSementara, 0, 0, canvasEl.width, canvasEl.height);
+
+                    videoSementara.src = "";
+                    videoSementara.load();
+                };
+            }
+
             // ==============================================
-            // SELESAI BIKIN THUMB
+            // === LOGIKA KLIK PUTAR / JEDA (PERBAIKAN NGADAT) ===
             // ==============================================
-
-
-            // === LOGIKA KLIK PUTAR / JEDA ===
             wadahVideoEl.addEventListener('click', () => {
                 // 🔄 MATIKAN SEMUA VIDEO LAIN YANG SEDANG BERJALAN
                 document.querySelectorAll('video').forEach(vidLain => {
@@ -233,24 +236,43 @@ function buatKartuKonten(data, modeRapi = false) {
                 });
 
                 // ✅ BARU MULAI MUAT DATA VIDEO ASLI KETIKA DIKLIK
-                if (!videoEl.src) {
+                if (!videoEl.src || videoEl.src === window.location.href) {
                     videoEl.src = videoEl.getAttribute('data-sumber');
-                    videoEl.load(); // ⚠️ DI SINI BARU MULAI NYEDOT DATA BESAR
+                    videoEl.load(); // Mulai sedot data
                 }
 
                 // === PUTAR ===
-                if(videoEl.paused) {
-                    canvasEl.classList.add('opacity-0'); // Sembunyikan gambar sampul
-                    videoEl.style.display = 'block'; // Munculkan video asli
-                    videoEl.muted = false; // Nyalakan suara
-                    videoEl.play();
-                    ikonPlayEl.classList.add('opacity-0'); // Hilangkan ikon
-                } 
+                if (videoEl.paused) {
+                    // Beri penanda loading visual (opsional tapi bagus untuk UX)
+                    ikonPlayEl.innerHTML = `<div class="w-16 h-16 flex items-center justify-center rounded-full bg-black/50 text-white text-sm backdrop-blur-sm">⏳</div>`;
+
+                    // PERBAIKAN: Gunakan Promise agar tidak ngadat karena dipaksa putar sebelum buffer
+                    let playPromise = videoEl.play();
+
+                    if (playPromise !== undefined) {
+                        playPromise.then(() => {
+                            // Video sukses diputar (sudah buffering)
+                            canvasEl.classList.add('opacity-0');
+                            videoEl.style.display = 'block';
+                            videoEl.muted = false;
+                            ikonPlayEl.classList.add('opacity-0');
+
+                            // Kembalikan icon play ke default untuk nanti jika di-pause
+                            setTimeout(() => {
+                                ikonPlayEl.innerHTML = `<div class="w-16 h-16 flex items-center justify-center rounded-full bg-black/30 text-white text-2xl backdrop-blur-sm">▶️</div>`;
+                            }, 300);
+                        }).catch(error => {
+                            // Jika terganggu/belum siap, kembalikan tampilan
+                            console.log("Menunggu buffer / tertunda: ", error);
+                            ikonPlayEl.innerHTML = `<div class="w-16 h-16 flex items-center justify-center rounded-full bg-black/30 text-white text-2xl backdrop-blur-sm">▶️</div>`;
+                        });
+                    }
+                }
                 // === JEDA ===
                 else {
                     videoEl.pause();
                     videoEl.style.display = 'none';
-                    canvasEl.classList.remove('opacity-0'); // Balik lagi ke gambar sampul
+                    canvasEl.classList.remove('opacity-0');
                     ikonPlayEl.classList.remove('opacity-0');
                 }
             });
@@ -262,7 +284,7 @@ function buatKartuKonten(data, modeRapi = false) {
                 ikonPlayEl.classList.remove('opacity-0');
             });
 
-        } 
+        }
         // === BAGIAN GAMBAR BIASA (TETAP SAMA) ===
         else {
             div.innerHTML = `
@@ -362,11 +384,9 @@ async function ambilDataDariTikTok(url) {
 
 // --- ✅ AMBIL DATA INSTAGRAM (DIPERBARUI: SISTEM FASTDL TERBARU) ---
 async function ambilDataDariIG(url) {
-    // Bersihkan link dari parameter tambahan
     url = url.split('?')[0];
     const linkMurni = encodeURIComponent(url);
 
-    // 🔥 API UTAMA: Sama persis fastdl.app
     try {
         const res = await fetch(`https://api.fastdl.app/ig?url=${linkMurni}`, {
             method: 'GET',
@@ -393,7 +413,6 @@ async function ambilDataDariIG(url) {
         throw new Error("Data tidak ditemukan di API utama");
     }
 
-    // 🔥 CADANGAN 1: Domain cadangan fastdl
     catch {
         try {
             const res2 = await fetch(`https://api.instadl.app/process?link=${linkMurni}`, {
@@ -413,7 +432,6 @@ async function ambilDataDariIG(url) {
             throw new Error("Cadangan 1 gagal");
         }
 
-        // 🔥 CADANGAN 2: Sistem proxy terenkripsi
         catch {
             try {
                 const res3 = await fetch(`https://igdownloader.app/api/ajaxSearch`, {
@@ -428,7 +446,6 @@ async function ambilDataDariIG(url) {
                 const data3 = await res3.json();
 
                 if (data3.status === "ok") {
-                    // Cari link unduh dari konten respon
                     const linkVideo = data3.data.match(/href="([^"]+\.mp4[^"]*)"/);
                     const linkGambar = data3.data.match(/href="([^"]+\.jpg[^"]*)"/);
 
@@ -442,7 +459,6 @@ async function ambilDataDariIG(url) {
                 throw new Error("Cadangan 2 gagal");
             }
 
-            // ❌ PESAN AKHIR JIKA SEMUA GAGAL
             catch {
                 throw new Error(`
 ❌ Konten dibatasi Instagram!
@@ -507,7 +523,6 @@ document.addEventListener('click', async function (e) {
                 alert(`✅ BERHASIL DISIMPAN!\n\n📂 Lokasi:\nPenyimpanan Internal > Documents > ${namaFile}`);
 
             } else {
-                // --- DI WEB: LANGSUNG DOWNLOAD, TANPA TAB BARU ---
                 e.target.innerText = "⌛ Menyiapkan...";
                 const res = await fetch(url, { method: 'GET', mode: 'cors', credentials: 'omit' });
                 if (!res.ok) throw new Error("Gagal ambil file");
@@ -546,22 +561,17 @@ document.addEventListener('click', async function (e) {
     }
 });
 
-
 // ==================================================
 // 👤 FITUR LOGIN / PROFIL - VERSI PERBAIKAN TOTAL ✅
 // ==================================================
 function inisialisasiMenuLogin() {
 
-    // 👉 BAGIAN UTAMA: KLIK ICON PROFIL
     btnProfil.addEventListener('click', async () => {
-        // ✅ CARA BARU: CEK LANGSUNG KE SERVER, JANGAN NGAREPIN VARIABEL SIMPANAN
         const { data: { user } } = await supabaseClient.auth.getUser();
 
         if (user) {
-            // ✨ SUDAH LOGIN: TAMPILKAN PROFIL
             tampilkanMenuProfil(user);
         } else {
-            // ❌ BELUM LOGIN: TAMPILKAN FORM LOGIN
             tampilkanFormLogin();
         }
 
@@ -569,17 +579,12 @@ function inisialisasiMenuLogin() {
         setTimeout(() => kotakModal.classList.remove('scale-95', 'opacity-0'), 10);
     });
 
-    // TUTUP MODAL
     tutupModal.addEventListener('click', tutupSemuaModal);
     modalProfil.addEventListener('click', (e) => e.target === modalProfil && tutupSemuaModal());
 
-    // PINDAH HALAMAN: LOGIN <-> DAFTAR
     keDaftar.addEventListener('click', (e) => { e.preventDefault(); tampilkanFormDaftar(); });
     keLogin.addEventListener('click', (e) => { e.preventDefault(); tampilkanFormLogin(); });
 
-    // ==============================================
-    // FUNGSI: MASUK / LOGIN
-    // ==============================================
     btnMasuk.addEventListener('click', async () => {
         tampilkanPesan('⌛ Sedang masuk...', 'info');
 
@@ -591,17 +596,13 @@ function inisialisasiMenuLogin() {
         if (error) return tampilkanPesan('❌ ' + error.message, 'salah');
 
         tampilkanPesan('✅ Berhasil masuk!', 'benar');
-        updateStatusUser(data.user); // Ubah tampilan tombol jadi ada tanda ijo
+        updateStatusUser(data.user);
 
-        // Pas sukses, langsung tutup modal
         setTimeout(() => {
             tutupSemuaModal();
         }, 1200);
     });
 
-    // ==============================================
-    // FUNGSI: DAFTAR AKUN
-    // ==============================================
     btnBuatAkun.addEventListener('click', async () => {
         tampilkanPesan('⌛ Membuat akun...', 'info');
         const { data, error } = await supabaseClient.auth.signUp({
@@ -612,23 +613,17 @@ function inisialisasiMenuLogin() {
         tampilkanPesan('✅ Akun dibuat! Silakan masuk.', 'benar');
     });
 
-    // ==============================================
-    // FUNGSI: KELUAR / LOGOUT
-    // ==============================================
     btnKeluar.addEventListener('click', async () => {
         await supabaseClient.auth.signOut();
-        updateStatusUser(null); // Hapus status login
+        updateStatusUser(null);
         tutupSemuaModal();
     });
 
-    // ==============================================
-    // CEK OTOMATIS SAAT HALAMAN DIBUKA PERTAMA KALI
-    // ==============================================
     cekDanPerbaruiStatusUserSaatMulai();
 }
 
 // ==================================================
-// ⚙️ FUNGSI BANTUAN (JANGAN DIUBAH URUTANNYA)
+// ⚙️ FUNGSI BANTUAN (VERSI BERSIH, DUPLIKAT DIHAPUS)
 // ==================================================
 
 function tutupSemuaModal() {
@@ -653,71 +648,17 @@ function tampilkanFormDaftar() {
     pesanAkun.classList.add('hidden');
 }
 
-// 👇 FUNGSI INI YANG DIUBAH: KIRIM DATA USER LANGSUNG KE SINI
 function tampilkanMenuProfil(userData) {
+    // ✅ Judul berubah jadi Profil, parameter userData opsional untuk jaga-jaga
     judulModal.innerText = "✅ Profil Saya";
     formLogin.classList.add('hidden');
     formDaftar.classList.add('hidden');
     pesanAkun.classList.add('hidden');
 
-    // Tulis emailnya di sini
-    emailPengguna.innerText = userData.email;
-    menuProfil.classList.remove('hidden'); // Keluar menu profil + email
-}
-
-function tampilkanPesan(teks, jenis) {
-    pesanAkun.classList.remove('hidden');
-    pesanAkun.innerText = teks;
-    pesanAkun.className = "text-sm text-center p-2 rounded-lg mt-3 " + (
-        jenis === 'benar' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
-            jenis === 'salah' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' :
-                'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-    );
-}
-
-function updateStatusUser(user) {
-    if (user) {
-        tandaLogin.classList.remove('hidden'); // Tanda bulat ijo nongol
-    } else {
-        tandaLogin.classList.add('hidden'); // Tanda ijo hilang
+    if (userData && userData.email) {
+        emailPengguna.innerText = userData.email;
     }
-}
-
-// Cek otomatis pas halaman dibuka
-async function cekDanPerbaruiStatusUserSaatMulai() {
-    const { data: { user } } = await supabaseClient.auth.getUser();
-    updateStatusUser(user);
-}
-
-// --- FUNGSI BANTU LOGIN ---
-function tutupSemuaModal() {
-    kotakModal.classList.add('scale-95', 'opacity-0');
-    setTimeout(() => modalProfil.classList.add('hidden'), 200);
-    pesanAkun.classList.add('hidden');
-}
-
-function tampilkanFormLogin() {
-    judulModal.innerText = "Masuk Akun";
-    formLogin.classList.remove('hidden');
-    formDaftar.classList.add('hidden');
-    menuProfil.classList.add('hidden');
-    pesanAkun.classList.add('hidden');
-}
-
-function tampilkanFormDaftar() {
-    judulModal.innerText = "Daftar Akun Baru";
-    formLogin.classList.add('hidden');
-    formDaftar.classList.remove('hidden');
-    menuProfil.classList.add('hidden');
-    pesanAkun.classList.add('hidden');
-}
-
-function tampilkanMenuProfil() {
-    judulModal.innerText = "Profil Saya"; // ✅ Judul berubah jadi Profil
-    formLogin.classList.add('hidden');  // Sembunyikan form login
-    formDaftar.classList.add('hidden'); // Sembunyikan form daftar
-    menuProfil.classList.remove('hidden'); // ✅ TAMPILKAN MENU PROFIL & EMAIL
-    pesanAkun.classList.add('hidden');
+    menuProfil.classList.remove('hidden');
 }
 
 function tampilkanPesan(teks, jenis) {
@@ -733,18 +674,18 @@ function tampilkanPesan(teks, jenis) {
 function updateStatusUser(user) {
     if (user) {
         tandaLogin.classList.remove('hidden'); // ✅ Tampilkan titik hijau
-        emailPengguna.innerText = user.email; // ✅ TAMPILKAN EMAIL DI MENU PROFIL
+        emailPengguna.innerText = user.email;  // ✅ TAMPILKAN EMAIL DI MENU PROFIL
     } else {
         tandaLogin.classList.add('hidden');
         emailPengguna.innerText = '';
     }
 }
 
-function cekStatusLogin() {
-    return !!supabaseClient.auth.currentUser;
-}
-
-async function cekDanPerbaruiStatusUser() {
+async function cekDanPerbaruiStatusUserSaatMulai() {
     const { data: { user } } = await supabaseClient.auth.getUser();
     updateStatusUser(user);
+}
+
+function cekStatusLogin() {
+    return !!supabaseClient.auth.currentUser;
 }

@@ -16,7 +16,7 @@ const persenProgres = document.getElementById('persenProgres');
 const pesanUpload = document.getElementById('pesanUpload');
 const btnSubmit = document.getElementById('btnSubmit');
 
-// ✅ DATA CLOUDFLARE R2 (SUDAH BENAR)
+// ✅ DATA CLOUDFLARE R2
 const R2_UPLOAD_URL = "https://upload-r2-saya.nftgaming90.workers.dev/";
 const R2_PUBLIC_DOMAIN = "https://video-cdn-saya.nftgaming90.workers.dev/";
 
@@ -24,7 +24,7 @@ let fileTerpilih = null;
 let ekstensiFile = "";
 
 // ==================================================
-// ⚡ FILTER FILE (SESUAI SKEMA TABEL KAMU: video, stiker, gambar, gif)
+// ⚡ FILTER FILE
 // ==================================================
 function updateFilterFile() {
     const tipeAktif = document.querySelector('input[name="tipe"]:checked').value;
@@ -81,7 +81,7 @@ fileInput.addEventListener('change', function (e) {
 });
 
 // ==================================================
-// 🚀 PROSES UTAMA - ✅ DIPERBAIKI: url_thumbnail OTOMATIS TERISI
+// 🚀 PROSES UTAMA - ✅ DIPERBAIKI THUMBNAILNYA
 // ==================================================
 formUpload.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -97,17 +97,16 @@ formUpload.addEventListener('submit', async (e) => {
     try {
         // ==============================================
         // 1. UPLOAD KE CLOUDFLARE R2
-        // ✅ NAMA FOLDER: SESUAI PUNYA KAMU (videos, stickers, gambar)
         // ==============================================
         let namaFolderR2;
         if (tipePilih === 'video') {
-            namaFolderR2 = 'videos';     // <--- JAMAK
+            namaFolderR2 = 'videos';
         } else if (tipePilih === 'gambar') {
-            namaFolderR2 = 'gambar';      // <--- TUNGGAL
+            namaFolderR2 = 'gambar';
         } else if (tipePilih === 'stiker') {
-            namaFolderR2 = 'stickers';    // <--- JAMAK
+            namaFolderR2 = 'stickers';
         } else if (tipePilih === 'gif') {
-            namaFolderR2 = 'gambar';      // <--- Masuk folder gambar
+            namaFolderR2 = 'gambar';
         }
 
         const namaFileUnik = `${namaFolderR2}/${Date.now()}-${Math.random().toString(36).substring(2, 10)}.${ekstensiFile}`;
@@ -116,21 +115,25 @@ formUpload.addEventListener('submit', async (e) => {
         tampilkanPesan("⌛ File ada di R2, kirim ke Database...", "info");
 
         // ==============================================
-        // 2. SIMPAN KE SUPABASE
-        // ✅ PERUBAHAN UTAMA: url_thumbnail DIISI SAMA DENGAN url_file
+        // 2. SIMPAN KE SUPABASE (LOGIKA THUMBNAIL DIPERBAIKI)
         // ==============================================
+
+        // 🔥 JIKA VIDEO, KOSONGKAN THUMBNAIL AGAR SCRIPT HALAMAN DEPAN BIKIN CANVAS OTOMATIS
+        // 🔥 JIKA GAMBAR, ISI DENGAN URL FILE TERSEBUT
+        const urlThumb = (tipePilih === 'video') ? "" : urlHasilUpload;
+
         const dataUntukDikirim = {
-            judul: judul,               // text, not null ✅
-            deskripsi: null,            // text, null ✅
-            tipe: tipePilih,            // text, CHECK: video/stiker/gif/gambar ✅
-            kategori_id: null,          // bigint, null ✅
-            url_file: urlHasilUpload,   // text, not null ✅
-            url_thumbnail: urlHasilUpload, // ✅ DIISI OTOMATIS SAMA PERSIS DENGAN LINK ASLI
-            has_lyrics: false,          // boolean ✅
-            lyrics_url: null,           // text ✅
-            jumlah_unduh: 0,            // bigint ✅
-            aktif: true,                // boolean ✅
-            user_id: window.userId      // UUID ✅ (Kolom baru untuk profil)
+            judul: judul,
+            deskripsi: null,
+            tipe: tipePilih,
+            kategori_id: null,
+            url_file: urlHasilUpload,
+            url_thumbnail: urlThumb,    // ✅ FIXED: Tidak akan merusak pemutar video lagi
+            has_lyrics: false,
+            lyrics_url: null,
+            jumlah_unduh: 0,
+            aktif: true,
+            user_id: window.userId
         };
 
         // ✅ KIRIM KE DATABASE
@@ -164,6 +167,8 @@ async function uploadKeR2(file, namaTujuan) {
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.open("PUT", uploadUrl);
+
+        // Hindari mengirim header yang aneh-aneh agar Worker tidak pusing
         xhr.setRequestHeader("Content-Type", file.type || 'application/octet-stream');
 
         xhr.upload.onprogress = (e) => {
@@ -184,7 +189,7 @@ async function uploadKeR2(file, namaTujuan) {
             }
         };
 
-        xhr.onerror = () => reject(new Error("Koneksi ke R2 gagal"));
+        xhr.onerror = () => reject(new Error("Koneksi ke R2 gagal (Cek pengaturan CORS di Worker!)"));
         xhr.send(file);
     });
 }

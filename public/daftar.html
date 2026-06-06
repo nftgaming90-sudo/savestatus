@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daftar Akun Baru - SaveStatus</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        utama: '#2563eb',
+                        gelap: '#111827',
+                    }
+                }
+            }
+        }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .content-auto { content-visibility: auto; }
+            .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+            .scrollbar-hide::-webkit-scrollbar { display: none; }
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-gelap text-gray-800 dark:text-gray-200 min-h-screen flex items-center justify-center py-10 px-4">
+
+    <main class="w-full max-w-md">
+        <!-- KARTU DAFTAR -->
+        <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 border border-gray-100 dark:border-gray-700">
+
+            <!-- JUDUL & IKON -->
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-utama/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-user-plus text-4xl text-utama"></i>
+                </div>
+                <h1 class="text-2xl font-bold">Buat Akun Baru</h1>
+                <p class="text-gray-500 dark:text-gray-400 text-sm mt-1">Gabung dan simpan status favoritmu</p>
+            </div>
+
+            <!-- PESAN NOTIFIKASI -->
+            <div id="pesanDaftar" class="hidden mb-4 p-3 rounded-lg text-sm text-center"></div>
+
+            <!-- FORM DAFTAR -->
+            <form id="formDaftar" class="space-y-5">
+
+                <!-- EMAIL -->
+                <div>
+                    <label for="emailDaftar" class="block text-sm font-medium mb-2">Email Aktif</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i
+                                class="fa fa-envelope"></i></span>
+                        <input type="email" id="emailDaftar" placeholder="nama@email.com"
+                            class="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent focus:ring-2 focus:ring-utama focus:border-utama outline-none transition">
+                    </div>
+                </div>
+
+                <!-- PASSWORD -->
+                <div>
+                    <label for="passDaftar" class="block text-sm font-medium mb-2">Kata Sandi</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i
+                                class="fa fa-lock"></i></span>
+                        <input type="password" id="passDaftar" placeholder="Minimal 6 karakter"
+                            class="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent focus:ring-2 focus:ring-utama focus:border-utama outline-none transition">
+                    </div>
+                </div>
+
+                <!-- KONFIRMASI PASSWORD -->
+                <div>
+                    <label for="passUlang" class="block text-sm font-medium mb-2">Ulangi Kata Sandi</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><i
+                                class="fa fa-lock"></i></span>
+                        <input type="password" id="passUlang" placeholder="Masukkan ulang kata sandi"
+                            class="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-transparent focus:ring-2 focus:ring-utama focus:border-utama outline-none transition">
+                    </div>
+                </div>
+
+                <!-- TOMBOL DAFTAR -->
+                <button type="submit" id="btnBuatAkun"
+                    class="w-full bg-utama hover:bg-utama/90 active:bg-utama/80 text-white font-medium py-3.5 px-4 rounded-lg transition-all shadow-md hover:shadow-lg">
+                    🚀 Daftar Sekarang
+                </button>
+
+                <!-- PEMISAH -->
+                <div class="relative text-center my-6">
+                    <div class="absolute left-0 top-1/2 w-full h-px bg-gray-200 dark:bg-gray-700"></div>
+                    <span class="relative bg-white dark:bg-gray-800 px-3 text-xs text-gray-500">ATAU</span>
+                </div>
+
+                <!-- LINK LOGIN -->
+                <p class="text-center text-sm">
+                    Sudah punya akun?
+                    <a href="login.html" class="text-utama font-semibold hover:underline transition">Masuk di sini</a>
+                </p>
+
+                <!-- KEMBALI KE BERANDA -->
+                <div class="text-center mt-4">
+                    <a href="index.html"
+                        class="text-xs text-gray-500 hover:text-utama transition flex items-center justify-center gap-1">
+                        <i class="fa fa-home"></i> Kembali ke Beranda
+                    </a>
+                </div>
+
+            </form>
+        </div>
+    </main>
+
+    <!-- SCRIPT -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="auth.js"></script>
+</body>
+
+</html>

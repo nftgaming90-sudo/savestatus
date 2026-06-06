@@ -3,16 +3,19 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SaveStatus Pro</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    colors: { utama: '#25D366', kedua: '#128C7E' },
+                    colors: {
+                        utama: '#2563eb',
+                        gelap: '#111827',
+                    }
                 }
             }
         }
@@ -22,42 +25,112 @@
             .content-auto { content-visibility: auto; }
             .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
             .scrollbar-hide::-webkit-scrollbar { display: none; }
+            .aspect-ratio-9-16 { aspect-ratio: 9 / 16; }
         }
     </style>
-    <!-- Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 
-<body class="bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+<!-- ✅ Tambah pb-20 biar konten gak ketutupan nav bawah -->
+
+<body class="bg-gray-50 dark:bg-gelap text-gray-800 dark:text-gray-200 min-h-screen pb-20">
 
     <!-- NAVIGASI ATAS -->
-    <header class="sticky top-0 z-50 bg-utama dark:bg-kedua text-white shadow-md">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+    <header
+        class="sticky top-0 z-50 bg-white/80 dark:bg-gelap/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 px-4 py-3 mb-6 shadow-sm">
+        <div class="container mx-auto flex justify-between items-center">
             <h1 class="text-lg font-bold">✨ SaveStatus Pro</h1>
-            <button id="btnProfil" class="p-2 rounded-full hover:bg-white/20">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
+            <!-- TOMBOL PROFIL / LOGIN -->
+            <button id="btnProfil" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition relative">
+                <i class="fa fa-user-circle text-xl"></i>
+                <!-- TANDA LOGIN DIUBAH JADI TULISAN -->
+                <span id="tandaLogin"
+                    class="absolute -top-2 -right-6 text-xs font-bold text-green-500 hidden">AKTIF</span>
             </button>
         </div>
     </header>
 
+    <!-- ✅ MODAL LOGIN / DAFTAR / PROFIL -->
+    <div id="modalProfil"
+        class="fixed inset-0 z-[60] bg-black/60 backdrop-blur-sm hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md transform transition-all scale-95 opacity-0"
+            id="kotakModal">
+            <!-- JUDUL MODAL -->
+            <div class="p-4 border-b dark:border-gray-700 flex justify-between items-center">
+                <h3 id="judulModal" class="text-lg font-bold">Masuk / Daftar</h3>
+                <button id="tutupModal"
+                    class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 text-xl">✕</button>
+            </div>
+            <!-- ISI MODAL: FORM LOGIN / DAFTAR -->
+            <div id="isiForm" class="p-4 space-y-4">
+                <!-- FORM LOGIN -->
+                <div id="formLogin" class="">
+                    <div>
+                        <label class="text-sm font-medium">Email</label>
+                        <input type="email" id="emailLogin" placeholder="nama@email.com"
+                            class="w-full mt-1 px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-utama outline-none">
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">Kata Sandi</label>
+                        <input type="password" id="passLogin" placeholder="Masukkan kata sandi"
+                            class="w-full mt-1 px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-utama outline-none">
+                    </div>
+                    <button id="btnMasuk"
+                        class="w-full bg-utama hover:bg-utama/90 text-white py-2 rounded-lg font-semibold transition">Masuk</button>
+                    <p class="text-center text-sm text-gray-500">Belum punya akun? <a href="#" id="keDaftar"
+                            class="text-utama hover:underline">Daftar di sini</a></p>
+                </div>
+                <!-- FORM DAFTAR -->
+                <div id="formDaftar" class="hidden">
+                    <div>
+                        <label class="text-sm font-medium">Email</label>
+                        <input type="email" id="emailDaftar" placeholder="nama@email.com"
+                            class="w-full mt-1 px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-utama outline-none">
+                    </div>
+                    <div>
+                        <label class="text-sm font-medium">Kata Sandi</label>
+                        <input type="password" id="passDaftar" placeholder="Minimal 6 karakter"
+                            class="w-full mt-1 px-3 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-utama outline-none">
+                    </div>
+                    <button id="btnBuatAkun"
+                        class="w-full bg-utama hover:bg-utama/90 text-white py-2 rounded-lg font-semibold transition">Buat
+                        Akun</button>
+                    <p class="text-center text-sm text-gray-500">Sudah punya akun? <a href="#" id="keLogin"
+                            class="text-utama hover:underline">Masuk di sini</a></p>
+                </div>
+                <!-- MENU SAAT SUDAH LOGIN -->
+                <div id="menuProfil" class="hidden text-center space-y-3">
+                    <div class="w-16 h-16 bg-utama/10 rounded-full flex items-center justify-center mx-auto mb-2">
+                        <i class="fa fa-user text-2xl text-utama"></i>
+                    </div>
+                    <p id="emailPengguna" class="font-medium"></p>
+                    <hr class="dark:border-gray-700">
+                    <button
+                        class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">⭐
+                        Koleksi Favorit</button>
+                    <button
+                        class="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition">⚙️
+                        Pengaturan</button>
+                    <button id="btnKeluar"
+                        class="w-full bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg font-semibold mt-2 transition">Keluar</button>
+                </div>
+                <!-- PESAN NOTIFIKASI -->
+                <div id="pesanAkun" class="text-sm text-center hidden p-2 rounded-lg"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- KONTEN UTAMA -->
-    <main class="container mx-auto px-4 py-6 pb-20">
+    <main class="container mx-auto px-4 py-6">
 
         <!-- FITUR SIMPAN STORY -->
-        <section class="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow p-4">
+        <section
+            class="mb-8 bg-white dark:bg-gray-800 rounded-xl shadow p-4 border border-gray-100 dark:border-gray-700">
             <h2 class="text-xl font-bold mb-3">🔗 Simpan Story WA / IG</h2>
-            <!-- Ubah jadi flex kolom di HP, baris di layar besar -->
             <div class="flex flex-col sm:flex-row gap-2">
                 <input type="text" id="linkInput" placeholder="Tempel link story di sini..."
                     class="flex-1 px-4 py-2 border rounded-lg dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-utama">
                 <button id="btnCek"
-                    class="bg-utama hover:bg-utama/90 text-white px-4 py-2 rounded-lg font-semibold w-full sm:w-auto">
-                    Unduh
-                </button>
+                    class="bg-utama hover:bg-utama/90 text-white px-4 py-2 rounded-lg font-semibold w-full sm:w-auto transition">Unduh</button>
             </div>
         </section>
 
@@ -65,78 +138,53 @@
         <section class="mb-8">
             <h2 class="text-xl font-bold mb-3">📂 Koleksi Status</h2>
             <div class="flex gap-3 overflow-x-auto scrollbar-hide pb-2">
-                <button
+                <button data-kategori="semua"
                     class="kategori-btn bg-utama text-white px-4 py-2 rounded-full shadow whitespace-nowrap active">Semua</button>
-                <button
-                    class="kategori-btn bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow whitespace-nowrap">Video
-                    Lirik</button>
-                <button
-                    class="kategori-btn bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow whitespace-nowrap">Stiker</button>
-                <button
-                    class="kategori-btn bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow whitespace-nowrap">GIF
-                    Lucu</button>
-                <button
-                    class="kategori-btn bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow whitespace-nowrap">Ucapan</button>
+                <button data-kategori="video"
+                    class="kategori-btn bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow whitespace-nowrap hover:bg-utama/10 dark:hover:hover:bg-utama/20 transition">Video</button>
+                <button data-kategori="gambar"
+                    class="kategori-btn bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow whitespace-nowrap hover:bg-utama/10 dark:hover:hover:bg-utama/20 transition">Gambar</button>
+                <button data-kategori="stiker"
+                    class="kategori-btn bg-white dark:bg-gray-800 px-4 py-2 rounded-full shadow whitespace-nowrap hover:bg-utama/10 dark:hover:hover:bg-utama/20 transition">Stiker</button>
             </div>
         </section>
 
-        <!-- DAFTAR KONTEN (Dari Supabase) -->
+        <!-- DAFTAR KONTEN -->
         <section>
-            <div id="daftarKonten" class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <!-- Isinya nanti dimuat pakai JS -->
+            <div id="daftarKonten" class="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
                 <p class="col-span-full text-center text-gray-500 py-10">Memuat konten...</p>
             </div>
         </section>
 
     </main>
 
-    <!-- NAVIGASI BAWAH -->
-    <footer class="fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 shadow-lg border-t dark:border-gray-700">
-        <div class="flex justify-around py-2">
-            <button class="nav-btn flex flex-col items-center text-utama">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M3 12l2-2m0 0l7-7 7 7M5 10h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V12a2 2 0 012-2z" />
-                </svg>
+    <!-- ✅ NAVIGASI BAWAH - PERSIS 100% DENGAN HALAMAN PROFIL -->
+    <nav
+        class="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gelap/80 backdrop-blur-md border-t border-gray-200 dark:border-gray-800 z-40">
+        <div class="flex justify-around py-3">
+            <!-- BERANDA (AKTIF) -->
+            <a href="index.html" class="flex flex-col items-center text-utama font-medium">
+                <i class="fa fa-home text-xl"></i>
                 <span class="text-xs">Beranda</span>
-            </button>
-            <button class="nav-btn flex flex-col items-center text-gray-500 dark:text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M7 4v16M17 4v16M3 8h18M3 16h18" />
-                </svg>
-                <span class="text-xs">Kategori</span>
-            </button>
-            <button class="nav-btn flex flex-col items-center text-gray-500 dark:text-gray-400">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318z" />
-                </svg>
-                <span class="text-xs">Favorit</span>
-            </button>
+            </a>
+            <!-- UNGGAH -->
+            <a href="upload.html"
+                class="flex flex-col items-center text-gray-600 dark:text-gray-400 hover:text-utama transition-colors">
+                <i class="fa fa-plus-circle text-xl"></i>
+                <span class="text-xs">Unggah</span>
+            </a>
+            <!-- PROFIL -->
+            <a href="profil.html"
+                class="flex flex-col items-center text-gray-600 dark:text-gray-400 hover:text-utama transition-colors">
+                <i class="fa fa-user text-xl"></i>
+                <span class="text-xs">Profil</span>
+            </a>
         </div>
-    </footer>
+    </nav>
 
     <!-- SCRIPT UTAMA -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="app.js"></script>
-    <!-- Kebijakan Privasi (WAJIB ADA LINK DI DALAM APLIKASI) -->
-    <div class="hidden"><a href="kebijakan-privasi.html">Kebijakan Privasi</a></div>
-
-    <!-- ===== PEMUTAR VIDEO (TAMBAHAN BARU) ===== -->
-    <div id="pemutarVideo" class="fixed inset-0 z-50 bg-black/90 hidden flex-col items-center justify-center">
-        <button id="tutupVideo"
-            class="absolute top-4 right-4 text-white text-2xl bg-black/50 w-10 h-10 rounded-full flex items-center justify-center">✕</button>
-        <video id="videoEl" controls playsinline preload="none" crossorigin="anonymous"
-            style="width: 100%; max-height: 85vh; background: #000; border-radius: 8px;">
-            <source src="" type="video/mp4">
-            <!-- Pesan kalau gagal -->
-            <p class="text-white text-center p-5">Video tidak bisa diputar, coba refresh.</p>
-        </video>
-        <p id="judulVideo" class="text-white mt-3 text-center font-medium"></p>
-    </div>
 
 </body>
 

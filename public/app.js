@@ -24,6 +24,29 @@ const linkInput = document.getElementById('linkInput');
 const btnCek = document.getElementById('btnCek');
 const tombolKategori = document.querySelectorAll('.kategori-btn');
 
+// === ELEMEN BARU: LOGIN / PROFIL ===
+const btnProfil = document.getElementById('btnProfil');
+const modalProfil = document.getElementById('modalProfil');
+const kotakModal = document.getElementById('kotakModal');
+const tutupModal = document.getElementById('tutupModal');
+const judulModal = document.getElementById('judulModal');
+const pesanAkun = document.getElementById('pesanAkun');
+const formLogin = document.getElementById('formLogin');
+const formDaftar = document.getElementById('formDaftar');
+const menuProfil = document.getElementById('menuProfil');
+const keDaftar = document.getElementById('keDaftar');
+const keLogin = document.getElementById('keLogin');
+const emailLogin = document.getElementById('emailLogin');
+const passLogin = document.getElementById('passLogin');
+const btnMasuk = document.getElementById('btnMasuk');
+const emailDaftar = document.getElementById('emailDaftar');
+const passDaftar = document.getElementById('passDaftar');
+const btnBuatAkun = document.getElementById('btnBuatAkun');
+const btnKeluar = document.getElementById('btnKeluar');
+const emailPengguna = document.getElementById('emailPengguna');
+const tandaLogin = document.getElementById('tandaLogin');
+
+
 if (daftarKontenEl) console.log("🟢 [LOG 3] Elemen daftar konten DITEMUKAN");
 else console.error("🔴 [LOG 3] Elemen daftar konten TIDAK ADA di HTML!");
 
@@ -40,6 +63,9 @@ document.addEventListener('DOMContentLoaded', () => {
     muatKontenDariSupabase();
     aktifkanTombolKategori();
     aktifkanFiturDownloadLink();
+
+    // === JALANKAN FUNGSI LOGIN ===
+    inisialisasiMenuLogin();
 });
 
 // ==================================================
@@ -443,3 +469,206 @@ document.addEventListener('click', async function (e) {
         }
     }
 });
+
+
+// ==================================================
+// 👤 FITUR LOGIN / PROFIL - VERSI PERBAIKAN TOTAL ✅
+// ==================================================
+function inisialisasiMenuLogin() {
+
+    // 👉 BAGIAN UTAMA: KLIK ICON PROFIL
+    btnProfil.addEventListener('click', async () => {
+        // ✅ CARA BARU: CEK LANGSUNG KE SERVER, JANGAN NGAREPIN VARIABEL SIMPANAN
+        const { data: { user } } = await supabaseClient.auth.getUser();
+
+        if (user) {
+            // ✨ SUDAH LOGIN: TAMPILKAN PROFIL
+            tampilkanMenuProfil(user);
+        } else {
+            // ❌ BELUM LOGIN: TAMPILKAN FORM LOGIN
+            tampilkanFormLogin();
+        }
+
+        modalProfil.classList.remove('hidden');
+        setTimeout(() => kotakModal.classList.remove('scale-95', 'opacity-0'), 10);
+    });
+
+    // TUTUP MODAL
+    tutupModal.addEventListener('click', tutupSemuaModal);
+    modalProfil.addEventListener('click', (e) => e.target === modalProfil && tutupSemuaModal());
+
+    // PINDAH HALAMAN: LOGIN <-> DAFTAR
+    keDaftar.addEventListener('click', (e) => { e.preventDefault(); tampilkanFormDaftar(); });
+    keLogin.addEventListener('click', (e) => { e.preventDefault(); tampilkanFormLogin(); });
+
+    // ==============================================
+    // FUNGSI: MASUK / LOGIN
+    // ==============================================
+    btnMasuk.addEventListener('click', async () => {
+        tampilkanPesan('⌛ Sedang masuk...', 'info');
+
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: emailLogin.value,
+            password: passLogin.value
+        });
+
+        if (error) return tampilkanPesan('❌ ' + error.message, 'salah');
+
+        tampilkanPesan('✅ Berhasil masuk!', 'benar');
+        updateStatusUser(data.user); // Ubah tampilan tombol jadi ada tanda ijo
+
+        // Pas sukses, langsung tutup modal
+        setTimeout(() => {
+            tutupSemuaModal();
+        }, 1200);
+    });
+
+    // ==============================================
+    // FUNGSI: DAFTAR AKUN
+    // ==============================================
+    btnBuatAkun.addEventListener('click', async () => {
+        tampilkanPesan('⌛ Membuat akun...', 'info');
+        const { data, error } = await supabaseClient.auth.signUp({
+            email: emailDaftar.value,
+            password: passDaftar.value
+        });
+        if (error) return tampilkanPesan('❌ ' + error.message, 'salah');
+        tampilkanPesan('✅ Akun dibuat! Silakan masuk.', 'benar');
+    });
+
+    // ==============================================
+    // FUNGSI: KELUAR / LOGOUT
+    // ==============================================
+    btnKeluar.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        updateStatusUser(null); // Hapus status login
+        tutupSemuaModal();
+    });
+
+    // ==============================================
+    // CEK OTOMATIS SAAT HALAMAN DIBUKA PERTAMA KALI
+    // ==============================================
+    cekDanPerbaruiStatusUserSaatMulai();
+}
+
+// ==================================================
+// ⚙️ FUNGSI BANTUAN (JANGAN DIUBAH URUTANNYA)
+// ==================================================
+
+function tutupSemuaModal() {
+    kotakModal.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => modalProfil.classList.add('hidden'), 200);
+    pesanAkun.classList.add('hidden');
+}
+
+function tampilkanFormLogin() {
+    judulModal.innerText = "Masuk Akun";
+    formLogin.classList.remove('hidden');
+    formDaftar.classList.add('hidden');
+    menuProfil.classList.add('hidden');
+    pesanAkun.classList.add('hidden');
+}
+
+function tampilkanFormDaftar() {
+    judulModal.innerText = "Daftar Akun Baru";
+    formLogin.classList.add('hidden');
+    formDaftar.classList.remove('hidden');
+    menuProfil.classList.add('hidden');
+    pesanAkun.classList.add('hidden');
+}
+
+// 👇 FUNGSI INI YANG DIUBAH: KIRIM DATA USER LANGSUNG KE SINI
+function tampilkanMenuProfil(userData) {
+    judulModal.innerText = "✅ Profil Saya";
+    formLogin.classList.add('hidden');
+    formDaftar.classList.add('hidden');
+    pesanAkun.classList.add('hidden');
+
+    // Tulis emailnya di sini
+    emailPengguna.innerText = userData.email;
+    menuProfil.classList.remove('hidden'); // Keluar menu profil + email
+}
+
+function tampilkanPesan(teks, jenis) {
+    pesanAkun.classList.remove('hidden');
+    pesanAkun.innerText = teks;
+    pesanAkun.className = "text-sm text-center p-2 rounded-lg mt-3 " + (
+        jenis === 'benar' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+            jenis === 'salah' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' :
+                'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+    );
+}
+
+function updateStatusUser(user) {
+    if (user) {
+        tandaLogin.classList.remove('hidden'); // Tanda bulat ijo nongol
+    } else {
+        tandaLogin.classList.add('hidden'); // Tanda ijo hilang
+    }
+}
+
+// Cek otomatis pas halaman dibuka
+async function cekDanPerbaruiStatusUserSaatMulai() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    updateStatusUser(user);
+}
+
+// --- FUNGSI BANTU LOGIN ---
+function tutupSemuaModal() {
+    kotakModal.classList.add('scale-95', 'opacity-0');
+    setTimeout(() => modalProfil.classList.add('hidden'), 200);
+    pesanAkun.classList.add('hidden');
+}
+
+function tampilkanFormLogin() {
+    judulModal.innerText = "Masuk Akun";
+    formLogin.classList.remove('hidden');
+    formDaftar.classList.add('hidden');
+    menuProfil.classList.add('hidden');
+    pesanAkun.classList.add('hidden');
+}
+
+function tampilkanFormDaftar() {
+    judulModal.innerText = "Daftar Akun Baru";
+    formLogin.classList.add('hidden');
+    formDaftar.classList.remove('hidden');
+    menuProfil.classList.add('hidden');
+    pesanAkun.classList.add('hidden');
+}
+
+function tampilkanMenuProfil() {
+    judulModal.innerText = "Profil Saya"; // ✅ Judul berubah jadi Profil
+    formLogin.classList.add('hidden');  // Sembunyikan form login
+    formDaftar.classList.add('hidden'); // Sembunyikan form daftar
+    menuProfil.classList.remove('hidden'); // ✅ TAMPILKAN MENU PROFIL & EMAIL
+    pesanAkun.classList.add('hidden');
+}
+
+function tampilkanPesan(teks, jenis) {
+    pesanAkun.classList.remove('hidden');
+    pesanAkun.innerText = teks;
+    pesanAkun.className = "text-sm text-center p-2 rounded-lg mt-3 " + (
+        jenis === 'benar' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' :
+            jenis === 'salah' ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' :
+                'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
+    );
+}
+
+function updateStatusUser(user) {
+    if (user) {
+        tandaLogin.classList.remove('hidden'); // ✅ Tampilkan titik hijau
+        emailPengguna.innerText = user.email; // ✅ TAMPILKAN EMAIL DI MENU PROFIL
+    } else {
+        tandaLogin.classList.add('hidden');
+        emailPengguna.innerText = '';
+    }
+}
+
+function cekStatusLogin() {
+    return !!supabaseClient.auth.currentUser;
+}
+
+async function cekDanPerbaruiStatusUser() {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    updateStatusUser(user);
+}
